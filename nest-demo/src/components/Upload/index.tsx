@@ -1,6 +1,6 @@
-import { info } from 'console'
-import {useEffect, useRef,useState} from 'react'
+import {useEffect, useRef,useState,useCallback} from 'react'
 import {sliceUpload as sliceUploadService,mergeSlice} from '../../api'
+import {ProgressBar} from '../ProgressBar'
 import './index.css'
 export type fileChunk = {
   chunk:Blob,
@@ -15,12 +15,14 @@ type changedProgress = {
   progress:number
 }
 export const Upload = ()=>{
-  const chunkSize = useRef<number>(40*1024*1024)
+  const chunkSize = useRef<number>(10*1024*1024)
   const barSize = useRef<number>(150)
   const [progressInfoArr,setProgressInfoArr] = useState<progressInfo[]>([])
   const changedProgressArr = useRef<changedProgress[]>([])
   const [isProgress,setIsProgress] = useState<boolean>(false) 
   const [progress,setProgress] = useState<number>(0)
+  const fileHashWorker = useRef<Worker>(new Worker('../../workers/fileHash.js'))
+  const [hashPercentage,setHashPercentage] = useState<number>(0)
   const ProgressBarsRender = progressInfoArr.map(({hash,progress},index)=><li className='item' key={hash}>
     <div className="pro_container" style={{width:barSize.current}}>
      <p className='progress' style={{width:barSize.current*progress}}></p>
@@ -43,15 +45,17 @@ export const Upload = ()=>{
     let start = Date.now()
     const {size:maxByte,name:fileName} = file
     let cur = 0
-    const chunks:fileChunk[]= []
+    const slices:Blob[]= []
     while(cur<maxByte){
-      chunks.push({
-        chunk:file.slice(cur,cur+chunkSize.current),
-        hash:`${fileName}-${chunks.length}`
-      })
+      slices.push(file.slice(cur,cur+chunkSize.current))
       cur+=chunkSize.current
     }
-    setProgressInfoArr(chunks.map(chunk=>({
+    const hash =  await calculateFileHash(slices)
+    const chunks:fileChunk[] = slices.map((slice,index)=>({
+      hash:`${hash}-${index}`,
+      chunk:slice
+    }))
+    setProgressInfoArr(chunks.map((chunk)=>({
       hash:chunk.hash,
       progress:0
     })))
@@ -71,13 +75,31 @@ export const Upload = ()=>{
     }))
     await mergeSlice({
       chunkSize:chunkSize.current,
-      fileName
+      fileName,
+      hash
     })
     console.log(`所有分片上传完毕,所花时间为${Date.now()-start}`)
   }
+  const calculateFileHash = useCallback((chunks:Blob[])=>{
+    return new Promise<string>(resolve=>{
+      fileHashWorker.current.postMessage({chunks})
+      fileHashWorker.current.onmessage = e=>{
+        const {percentage,hash} = e.data
+        if(hash){
+          resolve(hash)
+          setHashPercentage(1)
+        }
+        else{
+          setHashPercentage(percentage)
+        }
+      }
+    })
+  },[])
   return <div className='upload_wrapper'>
    <h1>大文件上传</h1>
    <input type="file" onChange={(e)=>sliceUpload(e.target.files![0])} />
+   <p>文件hash生成进度</p>
+   <ProgressBar progress={hashPercentage} />
    <p>文件上传总进度如下:</p>
    <div className="total_progress_area" style={{width:400}}>
      <p className='progress' style={{width:400*progress}}></p>

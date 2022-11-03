@@ -1,0 +1,10 @@
+.progress_bar_container{
+  position: relative;
+  border-radius: 10px;
+}
+.inner_progress{
+  position: absolute;
+  left: 0;
+  top: 0;
+  border-radius: 10px;
+}

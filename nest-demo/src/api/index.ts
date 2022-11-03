@@ -19,6 +19,10 @@ export type file = {
 export type mergeInfo = {
   chunkSize:number
   fileName:string
+  /**
+   * 文件内容hash
+   */
+  hash:string
 }
 export function createCat(cat:Cat){
   return httpIns.post('/cats/createCat',cat)
