@@ -1,0 +1,38 @@
+.progress_area{
+  list-style: none;
+  display: flex;
+  flex-wrap: wrap;
+}
+.item{
+  text-align: left;
+  margin: 5px 10px;
+}
+.pro_container{
+  background-color: gray;
+  height: 14px;
+  border-radius: 10px;
+  position: relative;
+}
+.progress{
+  height: 14px;
+  border-radius: 10px;
+  background-color: lightcyan;
+  position: absolute;
+  left: 0;
+  top: 0;
+}
+.total_progress_area{
+  margin: 0 auto;
+  position: relative;
+  background-color: gray;
+  height: 14px;
+  border-radius: 10px;
+}
+.total_progress_area .progress{
+  position: absolute;
+  left: 0;
+  top: 0;
+  background-color: lightcoral;
+  height: 14px;
+  border-radius: 10px;
+}
