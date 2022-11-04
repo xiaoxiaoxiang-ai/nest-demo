@@ -1,5 +1,4 @@
-import axios, { Axios,AxiosRequestConfig } from 'axios'
-import {fileChunk} from '../components/Upload'
+import axios, { AxiosRequestConfig } from 'axios'
 const httpIns = axios.create({
   baseURL:'http://localhost:3000/'
 })
@@ -29,6 +28,7 @@ export type mergeInfo = {
    * 文件内容hash
    */
   hash:string
+  mimeType:string
 }
 export function createCat(cat:Cat){
   return httpIns.post('/cats/createCat',cat)
@@ -39,19 +39,24 @@ export function findAllCat(){
 export function findAllFiles(){
   return httpIns.get<file[]>('/file/findAll')
 }
-export function sliceUpload(formData:FormData,onProgress:AxiosRequestConfig['onUploadProgress']){
+export function sliceUpload(formData:FormData,onProgress:AxiosRequestConfig['onUploadProgress'],signal:AxiosRequestConfig['signal']){
   return httpIns.post('/file/slice-upload',formData,{    
-    onUploadProgress:onProgress
+    onUploadProgress:onProgress,
+    signal
   })
 }
 export function mergeSlice(info:mergeInfo,){
   return httpIns.post('/file/slice-merge',info)
 }
-type verifyInfo = {
+type verifyReqType= {
   fileName:string
   hash:string
   mimeType:string
 }
-export function verifyShouldUpload(info:verifyInfo){
-  return httpIns.post<ResWrapper<{shouldUpload:boolean}>>('/file/verify-should-upload',info)
+type verifyResType = {
+  shouldUpload:boolean
+  uploadedFilesHash:string[]
+}
+export function verifyShouldUpload(info:verifyReqType){
+  return httpIns.post<ResWrapper<verifyResType>>('/file/verify-should-upload',info)
 }
