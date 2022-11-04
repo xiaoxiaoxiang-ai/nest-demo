@@ -3,6 +3,12 @@ import {fileChunk} from '../components/Upload'
 const httpIns = axios.create({
   baseURL:'http://localhost:3000/'
 })
+type ResWrapper<T> = {
+  data:T
+  message:string
+  success:boolean
+  timestamp:Date
+}
 export type Cat = {
   id?:number
   name?:string
@@ -40,4 +46,12 @@ export function sliceUpload(formData:FormData,onProgress:AxiosRequestConfig['onU
 }
 export function mergeSlice(info:mergeInfo,){
   return httpIns.post('/file/slice-merge',info)
+}
+type verifyInfo = {
+  fileName:string
+  hash:string
+  mimeType:string
+}
+export function verifyShouldUpload(info:verifyInfo){
+  return httpIns.post<ResWrapper<{shouldUpload:boolean}>>('/file/verify-should-upload',info)
 }

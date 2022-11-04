@@ -1,5 +1,5 @@
-import {useEffect, useRef,useState,useCallback} from 'react'
-import {sliceUpload as sliceUploadService,mergeSlice} from '../../api'
+import {useEffect, useRef,useState,useCallback,MutableRefObject} from 'react'
+import {sliceUpload as sliceUploadService,mergeSlice,verifyShouldUpload} from '../../api'
 import {ProgressBar} from '../ProgressBar'
 import './index.css'
 export type fileChunk = {
@@ -21,7 +21,6 @@ export const Upload = ()=>{
   const changedProgressArr = useRef<changedProgress[]>([])
   const [isProgress,setIsProgress] = useState<boolean>(false) 
   const [progress,setProgress] = useState<number>(0)
-  const fileHashWorker = useRef<Worker>(new Worker('../../workers/fileHash.js'))
   const [hashPercentage,setHashPercentage] = useState<number>(0)
   const ProgressBarsRender = progressInfoArr.map(({hash,progress},index)=><li className='item' key={hash}>
     <div className="pro_container" style={{width:barSize.current}}>
@@ -43,7 +42,8 @@ export const Upload = ()=>{
   },[isProgress])
   const sliceUpload = async (file:File)=>{
     let start = Date.now()
-    const {size:maxByte,name:fileName} = file
+    const {size:maxByte,name:fileName,type:mimeType} = file
+    console.log('file',file)
     let cur = 0
     const slices:Blob[]= []
     while(cur<maxByte){
@@ -51,10 +51,24 @@ export const Upload = ()=>{
       cur+=chunkSize.current
     }
     const hash =  await calculateFileHash(slices)
+    const {data:{data:{shouldUpload}}} = await verifyShouldUpload({
+      fileName,
+      mimeType,
+      hash
+    })
     const chunks:fileChunk[] = slices.map((slice,index)=>({
       hash:`${hash}-${index}`,
       chunk:slice
     }))
+    if(!shouldUpload){
+      console.log('当前文件资源服务器已经存在,无需再上传')
+      setProgressInfoArr(chunks.map((chunk)=>({
+        hash:chunk.hash,
+        progress:1
+      })))
+      setIsProgress(true)
+      return 
+    }
     setProgressInfoArr(chunks.map((chunk)=>({
       hash:chunk.hash,
       progress:0
@@ -80,6 +94,10 @@ export const Upload = ()=>{
     })
     console.log(`所有分片上传完毕,所花时间为${Date.now()-start}`)
   }
+  const fileHashWorker:MutableRefObject<Worker> = useRef(null as any)
+  useEffect(()=>{
+    fileHashWorker.current = new Worker('../../workers/fileHash.js')
+  },[])
   const calculateFileHash = useCallback((chunks:Blob[])=>{
     return new Promise<string>(resolve=>{
       fileHashWorker.current.postMessage({chunks})

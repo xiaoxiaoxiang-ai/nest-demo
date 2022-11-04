@@ -21,6 +21,7 @@ self.onmessage = e=>{
         hash:spark.end(),
         percentage:1
       })
+      self.close()
     }
     else{
       fileReader.readAsArrayBuffer(chunks[count])
